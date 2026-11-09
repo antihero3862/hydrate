@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Hydrate</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Hydrate">
+<meta name="theme-color" content="#0e74dc">
+<style>
+:root{--bg:#f4f8fc;--card:#fff;--text:#12202f;--muted:#6b7b8c;--accent:#0e74dc;--track:#dce8f5}
+@media(prefers-color-scheme:dark){:root{--bg:#0b141d;--card:#142230;--text:#e8f1fa;--muted:#8aa0b5;--accent:#4aa3f5;--track:#233a50}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px -apple-system,system-ui,sans-serif;padding:env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 24px)}
+main{max-width:480px;margin:0 auto}
+h1{font-size:22px;margin:20px 0 12px}
+.card{background:var(--card);border-radius:18px;padding:18px;margin-bottom:14px}
+.ring{position:relative;width:200px;height:200px;margin:4px auto 8px}
+.ring svg{transform:rotate(-90deg)}
+.ring .c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.big{font-size:38px;font-weight:700}.sub{color:var(--muted);font-size:14px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+button{font:inherit;border:0;border-radius:12px;padding:12px 14px;background:var(--accent);color:#fff;font-weight:600;flex:1;min-width:70px}
+button.ghost{background:var(--track);color:var(--text)}
+button:active{opacity:.7}
+label{display:flex;justify-content:space-between;align-items:center;margin:10px 0;gap:10px}
+input,select{font:inherit;padding:8px;border-radius:8px;border:1px solid var(--track);background:var(--bg);color:var(--text);width:110px}
+ul{list-style:none;padding:0;margin:0}
+li{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--track)}
+li:last-child{border:0}
+.week{display:flex;gap:6px;align-items:flex-end;height:80px}
+.bar{flex:1;background:var(--track);border-radius:6px;position:relative;height:100%}
+.bar i{position:absolute;bottom:0;left:0;right:0;background:var(--accent);border-radius:6px}
+.days{display:flex;gap:6px;font-size:11px;color:var(--muted);text-align:center;margin-top:4px}.days span{flex:1}
+details summary{font-weight:600;cursor:pointer}
+details ol{padding-left:20px;color:var(--muted);font-size:14px}
+small{color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+<h1>💧 Hydrate</h1>
+
+<div class="card">
+  <div class="ring">
+    <svg width="200" height="200" viewBox="0 0 200 200">
+      <circle cx="100" cy="100" r="88" fill="none" stroke="var(--track)" stroke-width="16"/>
+      <circle id="prog" cx="100" cy="100" r="88" fill="none" stroke="var(--accent)" stroke-width="16" stroke-linecap="round" stroke-dasharray="553" stroke-dashoffset="553" style="transition:stroke-dashoffset .5s"/>
+    </svg>
+    <div class="c"><div class="big" id="amt">0</div><div class="sub" id="goalTxt"></div></div>
+  </div>
+  <div class="row" id="quick"></div>
+  <div class="row" style="margin-top:8px">
+    <button class="ghost" id="custom">Custom…</button>
+    <button class="ghost" id="undo">Undo last</button>
+  </div>
+</div>
+
+<div class="card"><b>Today</b><ul id="log"></ul><small id="empty">Nothing logged yet.</small></div>
+
+<div class="card"><b>Last 7 days</b><div class="week" id="week" style="margin-top:10px"></div><div class="days" id="days"></div></div>
+
+<div class="card">
+  <b>Settings</b>
+  <label>Units <select id="unit"><option value="oz">fl oz</option><option value="ml">mL</option></select></label>
+  <label>Daily goal <input id="goal" type="number" min="1"></label>
+  <label>Quick-add sizes <input id="sizes" placeholder="8,12,16" style="width:130px"></label>
+  <label>Reminders from <input id="from" type="time"></label>
+  <label>to <input id="to" type="time"></label>
+  <label>Every (hours) <input id="every" type="number" min="0.5" step="0.5"></label>
+  <label>Sync to Apple Health <input id="sync" type="checkbox" style="width:auto"></label>
+  <label>Shortcut name <input id="scName" style="width:150px"></label>
+</div>
+
+<div class="card">
+  <b>Reminders</b><br><small>Web apps can't wake your phone on their own, so the reliable option is a repeating calendar alert.</small>
+  <div class="row" style="margin-top:10px">
+    <button id="ics">Add to Calendar (.ics)</button>
+    <button class="ghost" id="notif">Alerts while open</button>
+  </div>
+</div>
+
+<div class="card">
+<details><summary>Apple Health setup (one time)</summary>
+<ol>
+<li>Open the <b>Shortcuts</b> app → <b>+</b> → name it exactly as the Shortcut name above (default “Log Water”).</li>
+<li>Add action <b>Get Text from Input</b> (set the shortcut to accept Text input).</li>
+<li>Add action <b>Log Health Sample</b> → Type: <b>Water</b>, Value: the text from step 2, Unit: <b>fl oz</b> (or mL to match your setting).</li>
+<li>Back here, turn on <b>Sync to Apple Health</b>. Each time you log water, the Shortcuts app flashes open, writes the sample, and you swipe back.</li>
+<li>Add this page to your Home Screen (Share → Add to Home Screen) for the full-screen app.</li>
+</ol>
+<small>Sync is one-way: this app writes to Health, it can't read other water entries.</small>
+</details>
+</div>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+const K='hydrate.v1';
+const def={unit:'oz',goal:64,sizes:'8,12,16',from:'08:00',to:'20:00',every:2,sync:false,scName:'Log Water',entries:[]};
+let S;
+try{S={...def,...JSON.parse(localStorage.getItem(K)||'{}')}}catch{S={...def}}
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch{}};
+const dayKey=d=>{d=new Date(d);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const U=()=>S.unit==='oz'?'fl oz':'mL';
+const fmt=n=>Math.round(n*10)/10;
+const dayTotal=k=>S.entries.filter(e=>dayKey(e.t)===k).reduce((a,e)=>a+e.v,0);
+
+function add(v){
+  if(!(v>0))return;
+  S.entries.push({t:Date.now(),v});save();render();
+  if(S.sync){location.href='shortcuts://run-shortcut?name='+encodeURIComponent(S.scName)+'&input=text&text='+encodeURIComponent(v)}
+}
+function render(){
+  const today=dayKey(Date.now()),tot=dayTotal(today),pct=Math.min(1,tot/S.goal);
+  $('amt').textContent=fmt(tot);
+  $('goalTxt').textContent='of '+S.goal+' '+U()+' · '+Math.round(pct*100)+'%';
+  $('prog').style.strokeDashoffset=553*(1-pct);
+  $('quick').innerHTML='';
+  S.sizes.split(',').map(Number).filter(n=>n>0).forEach(n=>{
+    const b=document.createElement('button');b.textContent='+'+n;b.onclick=()=>add(n);$('quick').appendChild(b)});
+  const es=S.entries.filter(e=>dayKey(e.t)===today).reverse();
+  $('log').innerHTML=es.map(e=>`<li><span>${new Date(e.t).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}</span><span>${fmt(e.v)} ${U()}</span></li>`).join('');
+  $('empty').style.display=es.length?'none':'';
+  let w='',d='';
+  for(let i=6;i>=0;i--){
+    const dt=new Date();dt.setDate(dt.getDate()-i);
+    const p=Math.min(1,dayTotal(dayKey(dt))/S.goal);
+    w+=`<div class="bar"><i style="height:${p*100}%"></i></div>`;
+    d+=`<span>${dt.toLocaleDateString([],{weekday:'narrow'})}</span>`;
+  }
+  $('week').innerHTML=w;$('days').innerHTML=d;
+}
+function bind(){
+  $('unit').value=S.unit;$('goal').value=S.goal;$('sizes').value=S.sizes;
+  $('from').value=S.from;$('to').value=S.to;$('every').value=S.every;
+  $('sync').checked=S.sync;$('scName').value=S.scName;
+  $('unit').onchange=e=>{
+    const old=S.unit,nu=e.target.value;if(old===nu)return;
+    // convert goal and sizes to the new unit; stored entries stay in their original numbers, so convert them too
+    const f=nu==='ml'?29.5735:1/29.5735;
+    S.goal=Math.round(S.goal*f/(nu==='ml'?50:1))*(nu==='ml'?50:1)||S.goal;
+    S.sizes=nu==='ml'?'250,350,500':'8,12,16';
+    S.entries.forEach(x=>x.v=Math.round(x.v*f*10)/10);
+    S.unit=nu;save();bind();render();
+  };
+  [['goal',Number],['sizes',x=>x],['from',x=>x],['to',x=>x],['every',Number],['scName',x=>x]].forEach(([id,c])=>
+    $(id).onchange=e=>{S[id]=c(e.target.value);save();render()});
+  $('sync').onchange=e=>{S.sync=e.target.checked;save()};
+}
+$('custom').onclick=()=>{const v=parseFloat(prompt('Amount ('+U()+')'));if(v>0)add(v)};
+$('undo').onclick=()=>{
+  const today=dayKey(Date.now());
+  for(let i=S.entries.length-1;i>=0;i--)if(dayKey(S.entries[i].t)===today){S.entries.splice(i,1);break}
+  save();render();
+};
+$('ics').onclick=()=>{
+  const [fh,fm]=S.from.split(':').map(Number),[th,tm]=S.to.split(':').map(Number);
+  const step=Math.max(.5,S.every)*60;let t=fh*60+fm,end=th*60+tm,ev=[];
+  const now=new Date(),ds=dayKey(now).replaceAll('-','');
+  const z=n=>String(n).padStart(2,'0');
+  for(;t<=end;t+=step){
+    const h=Math.floor(t/60),m=Math.round(t%60);
+    ev.push(['BEGIN:VEVENT','UID:hydrate-'+t+'@local','DTSTAMP:'+ds+'T000000','DTSTART:'+ds+'T'+z(h)+z(m)+'00','DTEND:'+ds+'T'+z(h)+z(m+5>59?59:m+5)+'00','RRULE:FREQ=DAILY','SUMMARY:💧 Drink some water','BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:Drink some water','TRIGGER:PT0M','END:VALARM','END:VEVENT'].join('\r\n'));
+  }
+  const cal='BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Hydrate//EN\r\n'+ev.join('\r\n')+'\r\nEND:VCALENDAR';
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([cal],{type:'text/calendar'}));a.download='hydrate-reminders.ics';
+  document.body.appendChild(a);a.click();a.remove();
+};
+let timer;
+$('notif').onclick=async()=>{
+  if(!('Notification' in window))return alert('Notifications are not available here. On iPhone, add this page to your Home Screen first.');
+  if(await Notification.requestPermission()!=='granted')return alert('Notifications were not allowed.');
+  scheduleOpen();alert('Alerts on while this app stays open. Use the calendar option for reliable reminders.');
+};
+function scheduleOpen(){
+  clearInterval(timer);
+  timer=setInterval(()=>{
+    const n=new Date(),m=n.getHours()*60+n.getMinutes();
+    const [fh,fm]=S.from.split(':').map(Number),[th,tm]=S.to.split(':').map(Number);
+    if(m<fh*60+fm||m>th*60+tm)return;
+    const last=S.entries.length?S.entries[S.entries.length-1].t:0;
+    if(Date.now()-last<S.every*3600e3)return;
+    if(dayTotal(dayKey(Date.now()))>=S.goal)return;
+    new Notification('💧 Time to drink water',{body:fmt(S.goal-dayTotal(dayKey(Date.now())))+' '+U()+' to go'});
+  },60000);
+}
+bind();render();
+if(Notification?.permission==='granted')scheduleOpen();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
